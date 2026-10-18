@@ -66,7 +66,7 @@ jobs:
           npm run package -w @embedding-atlas/utils
           npm run package -w @embedding-atlas/component
           npm run package -w @embedding-atlas/viewer
-          npm run package -w @embedding-atlas/embedding-atlas
+          npm --prefix packages/embedding-atlas run package
           npm run build -w @embedding-atlas/examples
           cd packages/backend && ./build.sh
 
