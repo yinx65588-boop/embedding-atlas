@@ -59,11 +59,16 @@ jobs:
           path: ~/.cache/embedding_atlas
           key: ${{ runner.os }}-embedding-atlas
 
-      - name: Generate cached demo data
-        run: cd packages/docs && npm run generate_cache
-
-      - name: Build
-        run: npm run build
+      - name: Build application and WASM packages
+        run: |
+          npm run build -w @embedding-atlas/density-clustering
+          npm run build -w @embedding-atlas/umap-wasm
+          npm run package -w @embedding-atlas/utils
+          npm run package -w @embedding-atlas/component
+          npm run package -w @embedding-atlas/viewer
+          npm run package -w @embedding-atlas/embedding-atlas
+          npm run build -w @embedding-atlas/examples
+          cd packages/backend && ./build.sh
 
       - name: Run type checks
         run: npm run check
@@ -89,11 +94,6 @@ jobs:
         with:
           name: python-dist
           path: dist/
-
-      - name: Upload docs artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: packages/docs/.vitepress/dist/
 
   test-python:
     runs-on: ubuntu-latest
@@ -128,71 +128,3 @@ jobs:
 
           pip install streamlit
           python -c "from embedding_atlas.streamlit import embedding_atlas"
-
-  publish-pypi:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    needs:
-      - build
-    permissions:
-      id-token: write
-
-    environment:
-      name: pypi
-      url: https://pypi.org/p/embedding-atlas
-
-    steps:
-      - name: Retrieve release distributions
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: python-dist
-          path: dist/
-
-      - name: Publish release distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
-        with:
-          packages-dir: dist/
-
-  publish-npmjs:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    needs:
-      - build
-    permissions:
-      contents: read
-      id-token: write
-
-    environment:
-      name: npmjs
-
-    steps:
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Retrieve release distributions
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: node-dist
-          path: package/
-
-      - run: cd package && npm publish --provenance --access public
-
-  publish-pages:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release' || inputs.publish_pages == true
-    needs:
-      - build
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
